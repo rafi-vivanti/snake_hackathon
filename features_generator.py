@@ -4,6 +4,30 @@ import episode_parser
 import scipy.ndimage as ndim
 
 
+def episodes_to_rewards_vec(episodeArray):
+    rewards = [i.reward for i in episodeArray]
+    prev_index=-1
+    lambda_ = 0.9
+    rewards_sum=np.zeros_like(rewards)
+    for i in range (len(rewards)):
+        if rewards[i]==-100 or i==len(episodeArray)-1:
+            rewards_sum[i]=rewards[i]
+            for j in range (i-1,prev_index,-1):
+                next_reward_sum = rewards_sum[j+1]
+                cur_reward = rewards[j]
+                cur_reward_sum = (1-lambda_)*cur_reward + lambda_* next_reward_sum ## more smooth reward, do not erward twice for long games
+                # cur_reward_sum = cur_reward + lambda_* next_reward_sum ## original RL theory.
+                rewards_sum[j] = cur_reward_sum
+            prev_index = i
+    return rewards_sum
+
+
+def episode_to_features_table(episodeArray):
+    feature_table = []
+    for episode in episodeArray:
+        feature_table.append(episode_to_features_vec(episode))
+    return feature_table
+
 def episode_to_features_vec(episode):
     sz = episode.board.shape
     head = episode.snake_head
@@ -14,6 +38,7 @@ def episode_to_features_vec(episode):
         left_place = [real_head[0] + 1, real_head[1]]
         right_place = [real_head[0] - 1, real_head[1]]
         front_place = [real_head[0], real_head[1] + 1]
+
     elif episode.dir == 'N':
         left_place = [real_head[0] - 1, real_head[1]]
         right_place = [real_head[0] + 1, real_head[1]]
@@ -38,13 +63,50 @@ def episode_to_features_vec(episode):
     feature_vector = [left_content, right_content, front_content]
 
     dist_map = get_distance_map(board, real_head)
-    for i in range(1, 10):
+
+
+
+    for i in range(1, 10): # we only support 10 types of apples
+
         apple_num = -i
         apple_map = board == apple_num
+        if not apple_map.any():
+            feature_vector.append(board.nbytes/8) # should be very large number
+            feature_vector.append(0)
+            continue
         apple_dists = apple_map * dist_map
-        apple_dists[apple_dists==0] = apple_dists.max()
-        ind = np.unravel_index(np.argmin(apple_dists, axis=None), apple_dists.shape)
-        a=1
+        apple_dists[apple_dists==0] = apple_dists.max()+1 # to avoid get zero when minimize
+        apple_dists[real_head[0],real_head[1]] = apple_dists.max()*2
+
+        if episode.dir == 'S':
+            apple_dists_copy = np.rot90(apple_dists, 2);
+        elif episode.dir == 'W':
+            apple_dists_copy = np.rot90(apple_dists, 3);
+        elif episode.dir == 'E':
+            apple_dists_copy = np.rot90(apple_dists, 1);
+        else:
+            apple_dists_copy = apple_dists.copy()
+
+        new_head_position= np.unravel_index(np.argmax(apple_dists_copy, axis=None), apple_dists_copy.shape)
+        closest_apple = np.unravel_index(np.argmin(apple_dists_copy, axis=None), apple_dists_copy.shape)
+        diff_index= np.asarray(closest_apple) - np.asarray(new_head_position)
+
+        # decide what is the direction to the closest apple. the board is already rotated to the north (snake view)
+        # decide on direction solely on direction in x axis
+        if (diff_index[1]>0):
+            step = 1
+        elif (diff_index[1]<0):
+            step=-1
+        else:
+            if (diff_index[0]>0):
+                step =1
+            else:
+                step=0
+        feature_vector.append(np.linalg.norm(diff_index))
+        feature_vector.append(step)
+    return feature_vector
+
+
 
 
 def get_distance_map(board, head):
@@ -63,4 +125,5 @@ def get_distance_map(board, head):
 if __name__ == '__main__':
     file_name = r"D:\projects\RL\snake\hackathon\rafi\logs\log_0.txt"
     episodeArray = episode_parser.parse(file_name)
-    episode_to_features_vec(episodeArray[777])
+    fetures_table = episode_to_features_table(episodeArray)
+    rewards_vec = episodes_to_rewards_vec(episodeArray)
