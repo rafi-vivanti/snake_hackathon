@@ -23,22 +23,29 @@ class AvoidCollisions(bp.Policy):
         self.log(str(self.r_sum), 'r_sum')
 
     def act(self, t, state, player_state):
-        # print ("act")
+        print ("act")
         head_pos = player_state['chain'][-1]
         self.log(str(t) + "\n" + str(state) + "\n" + str(head_pos) + player_state['dir'])
         # a = bp.Policy.ACTIONS[min(np.random.randint(20), 2)]  # 10% of actions are random
         rand_int = min(np.random.randint(6), 2)# 33% of actions are random
+        print(rand_int)
         a = bp.Policy.ACTIONS[rand_int]
+        action = a
+        print(a)
         if rand_int < 2:
-            print ('random action')
+            print ('random action ' + str(t))
             action = a
+            print(action)
+
         else:
-            print('regular action')
+            print('regular action ' + str(t))
             for a in [a] + list(np.random.permutation(bp.Policy.ACTIONS)):
                 r, c = head_pos.move(bp.Policy.TURNS[player_state['dir']][a]) % state.shape
                 if state[r, c] <= 0:
                     action = a
+                    print(action)
                     break
+                action = a
 
         return action
 

@@ -24,3 +24,4 @@ obj/
 _ReSharper*/
 *.pyc
 .idea/
+/game.out

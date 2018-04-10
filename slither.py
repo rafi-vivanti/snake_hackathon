@@ -333,9 +333,17 @@ class Game(object):
             initial_size = p.aq.qsize()
             p.handle_state(self.round, self.state, self.rewards[i+1])
             ## wait until all processes finished (team)
-            while p.aq.qsize() == initial_size:
+            long_time_waiting = 1000
+            for temp in range(long_time_waiting):
+                if not p.aq.qsize() == initial_size:
+                    break
                 time.sleep(0.01)
-            print ("slither got action and continued!")
+            if temp >= long_time_waiting-2:
+                print('slither got NO action. Policy probably crashed! ')
+                raise('slither got NO action. Policy probably crashed! ')
+
+            else:
+                print("slither got action and continued")
 
         # wait and collect actions
         # time.sleep(self.policy_wait_time)
