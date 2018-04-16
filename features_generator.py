@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import episode_parser
 import scipy.ndimage as ndim
-
+import os
 
 def episodes_to_rewards_vec(episodeArray):
     rewards = [i.reward for i in episodeArray]
@@ -28,39 +28,48 @@ def episode_to_features_table(episodeArray):
         feature_table.append(episode_to_features_vec(episode))
     return feature_table
 
+def get_data_for_the_next_steps(episode):
+    sz = episode.board.shape
+    head = episode.snake_head
+    real_head = np.asarray([np.mod(head[0], sz[0]), np.mod(head[1], sz[1])])
+
+    board_copy=episode.board.copy()
+    board_copy[real_head[0],real_head[1]]=777
+
+
+    if episode.dir == 'S':
+        north_board = np.rot90(board_copy, 2);
+    elif episode.dir == 'W':
+        north_board = np.rot90(board_copy, 3);
+    elif episode.dir == 'E':
+        north_board = np.rot90(board_copy, 1);
+    else:
+        north_board = board_copy.copy()
+
+
+    new_head_position = np.unravel_index(np.argmax(north_board, axis=None), north_board.shape)
+
+    north_board[north_board==777]=1
+    big_north_board = np.hstack((north_board, north_board, north_board))
+    big_north_board = np.vstack((big_north_board, big_north_board, big_north_board))
+    sub_board = big_north_board[new_head_position[0]+sz[0]-3:new_head_position[0]+sz[0]+4, new_head_position[1]+sz[1]-3:new_head_position[1]+sz[1]+4]
+
+    if not sub_board.shape == (7,7):
+        print("Error: sub_board.shape != (7,7)")
+
+    return sub_board.ravel()>0
+
+
+
 def episode_to_features_vec(episode):
     sz = episode.board.shape
     head = episode.snake_head
     board = episode.board
     real_head = np.asarray([np.mod(head[0], sz[0]), np.mod(head[1], sz[1])])
 
-    if episode.dir == 'S':
-        left_place = [real_head[0] + 1, real_head[1]]
-        right_place = [real_head[0] - 1, real_head[1]]
-        front_place = [real_head[0], real_head[1] + 1]
 
-    elif episode.dir == 'N':
-        left_place = [real_head[0] - 1, real_head[1]]
-        right_place = [real_head[0] + 1, real_head[1]]
-        front_place = [real_head[0], real_head[1] - 1]
-    elif episode.dir == 'W':
-        left_place = [real_head[0], real_head[1] + 1]
-        right_place = [real_head[0], real_head[1] - 1]
-        front_place = [real_head[0] - 1, real_head[1]]
-    else: # episode.dir == 'E':
-        left_place = [real_head[0], real_head[1] - 1]
-        right_place = [real_head[0], real_head[1] + 1]
-        front_place = [real_head[0] + 1, real_head[1]]
 
-    left_place = np.asarray([np.mod(left_place [0], sz[0]), np.mod(left_place [1], sz[1])])
-    right_place= np.asarray([np.mod(right_place[0], sz[0]), np.mod(right_place[1], sz[1])])
-    front_place= np.asarray([np.mod(front_place[0], sz[0]), np.mod(front_place[1], sz[1])])
-
-    left_content = board[left_place[0], left_place[1]]
-    right_content = board[right_place[0], right_place[1]]
-    front_content = board[front_place[0], front_place[1]]
-
-    feature_vector = [left_content, right_content, front_content]
+    feature_vector =  get_data_for_the_next_steps(episode)
 
     dist_map = get_distance_map(board, real_head)
 
@@ -71,8 +80,8 @@ def episode_to_features_vec(episode):
         apple_num = -i
         apple_map = board == apple_num
         if not apple_map.any():
-            feature_vector.append(board.nbytes/8) # should be very large number
-            feature_vector.append(0)
+            feature_vector = np.hstack((feature_vector,board.nbytes/8)) # should be very large number
+            feature_vector = np.hstack((feature_vector,0))
             continue
         apple_dists = apple_map * dist_map
         apple_dists[apple_dists==0] = apple_dists.max()+1 # to avoid get zero when minimize
@@ -102,8 +111,8 @@ def episode_to_features_vec(episode):
                 step =1
             else:
                 step=0
-        feature_vector.append(np.linalg.norm(diff_index))
-        feature_vector.append(step)
+        feature_vector =np.hstack((feature_vector,np.linalg.norm(diff_index)))
+        feature_vector = np.hstack((feature_vector,step))
     return feature_vector
 
 
@@ -122,8 +131,23 @@ def get_distance_map(board, head):
     return  res
 
 
+def all_logs_to_features(folder):
+    big_res_matix= np.zeros((0, 68))
+    i=0
+    for file_name in os.listdir(folder):
+        print(i)
+        i=i+1
+        file_path= os.path.join(folder,file_name)
+        episodeArray = episode_parser.parse(file_path)
+        fetures_table = np.asarray(episode_to_features_table(episodeArray))
+        rewards_vec = np.asarray(episodes_to_rewards_vec(episodeArray)).transpose()
+        rewards_vec = np.resize(rewards_vec, (rewards_vec.shape[0], 1))
+        one_log_res = np.hstack((fetures_table,rewards_vec))
+        big_res_matix = np.vstack((big_res_matix,one_log_res))
+    return big_res_matix
+
+
 if __name__ == '__main__':
-    file_name = r"D:\projects\RL\snake\hackathon\rafi\logs\log_0.txt"
-    episodeArray = episode_parser.parse(file_name)
-    fetures_table = episode_to_features_table(episodeArray)
-    rewards_vec = episodes_to_rewards_vec(episodeArray)
+    folder = r"D:\projects\RL\snake\hackathon\rafi\logs"
+    big_res_matix = all_logs_to_features(folder)
+    np.save(os.path.join(folder,"feturesAndRewards"),big_res_matix)

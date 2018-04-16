@@ -1,2 +1,2 @@
 game_id,player_id,policy,score,state_file_path
-2711651985336,1,AvoidCollisions,9413.466496293337,D:\projects\RL\snake\hackathon\hackathon\states\2711651985336.1.AvoidCollisions.state.pkl
+2301881395240,1,AvoidCollisions,9491.513293821408,D:\projects\RL\snake\hackathon\hackathon\states\2301881395240.1.AvoidCollisions.state.pkl
