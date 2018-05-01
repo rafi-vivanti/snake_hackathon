@@ -46,7 +46,7 @@ class AvoidCollisions(bp.Policy):
                     print(action)
                     break
                 action = a
-
+        self.log(action, 'next action')
         return action
 
     def get_state(self):

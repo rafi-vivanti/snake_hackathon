@@ -57,7 +57,17 @@ def get_data_for_the_next_steps(episode):
     if not sub_board.shape == (7,7):
         print("Error: sub_board.shape != (7,7)")
 
-    return sub_board.ravel()>0
+    mid_col = int(np.floor(sub_board.shape[0] / 2))
+    mid_row = int(np.floor(sub_board.shape[1] / 2))
+    values = np.zeros_like(sub_board)
+    struct_ = ndim.generate_binary_structure(2, 1)
+    values[mid_row, mid_col] = 1
+    values = ndim.binary_dilation(values, structure=struct_).astype(values.dtype)
+    values = ndim.binary_dilation(values, structure=struct_).astype(values.dtype)
+    values = ndim.binary_dilation(values, structure=struct_).astype(values.dtype)
+    sub_board = sub_board[values > 0]
+
+    return sub_board
 
 
 
@@ -132,7 +142,7 @@ def get_distance_map(board, head):
 
 
 def all_logs_to_features(folder):
-    big_res_matix= np.zeros((0, 68))
+    big_res_matix= np.zeros((0, 44))
     i=0
     for file_name in os.listdir(folder):
         print(i)
@@ -150,4 +160,4 @@ def all_logs_to_features(folder):
 if __name__ == '__main__':
     folder = r"D:\projects\RL\snake\hackathon\rafi\logs"
     big_res_matix = all_logs_to_features(folder)
-    np.save(os.path.join(folder,"feturesAndRewards"),big_res_matix)
+    np.save(os.path.join(folder,"feturesAndRewards"), big_res_matix)

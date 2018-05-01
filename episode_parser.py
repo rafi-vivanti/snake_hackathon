@@ -10,6 +10,7 @@ class Episode:
         self.board = []
         self.snake_head = []
         self.dir = 'W'
+        self.next_dir = 'W'
 
 def parseBoard(lines):
     board = np.zeros((0,10), dtype=int)
@@ -44,17 +45,18 @@ def parse_episode(lines):
     head_line = lines[13]
     episode_instance.snake_head = parseHead(head_line[:-2])
     episode_instance.board = parseBoard(lines[3:13])# np.asarray(int(lines[3:13, :-1]))
+    episode_instance.next_dir = int(lines[14].split()[3])
     return episode_instance
 
 
 def parse(file_name):
     f = open(file_name)
-    content = f.readlines();
+    content = f.readlines()
     content = content[1:]
     i = 0
     episodeArray = []
     while (i<len(content)):
-        lines=content[i:i+14]
+        lines=content[i:i+15]
         episode_instance = parse_episode(lines)
         episodeArray.append(episode_instance)
         i+=14
@@ -62,6 +64,6 @@ def parse(file_name):
 
 
 if __name__ == '__main__':
-    file_name = r"D:\projects\RL\snake\hackathon\rafi\logs\log_0.txt"
+    file_name = r"D:\projects\RL\snake\hackathon\rafi\new_logs\log_0.txt"
     episodeArray = parse(file_name)
     a=1
