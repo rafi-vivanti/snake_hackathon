@@ -66,8 +66,13 @@ def get_data_for_the_next_steps(episode):
     values = ndim.binary_dilation(values, structure=struct_).astype(values.dtype)
     values = ndim.binary_dilation(values, structure=struct_).astype(values.dtype)
     sub_board = sub_board[values > 0]
+    next_direction_code = 0
+    if episode.next_dir == 'CW':
+        next_direction_code = 1
+    elif episode.next_dir == 'CC':
+        next_direction_code = -1
 
-    return sub_board
+    return np.hstack((next_direction_code, sub_board))
 
 
 
@@ -77,13 +82,9 @@ def episode_to_features_vec(episode):
     board = episode.board
     real_head = np.asarray([np.mod(head[0], sz[0]), np.mod(head[1], sz[1])])
 
-
-
-    feature_vector =  get_data_for_the_next_steps(episode)
+    feature_vector = get_data_for_the_next_steps(episode)
 
     dist_map = get_distance_map(board, real_head)
-
-
 
     for i in range(1, 10): # we only support 10 types of apples
 
@@ -118,9 +119,10 @@ def episode_to_features_vec(episode):
             step=-1
         else:
             if (diff_index[0]>0):
-                step =1
+                step = 1
             else:
-                step=0
+                step = 0
+
         feature_vector =np.hstack((feature_vector,np.linalg.norm(diff_index)))
         feature_vector = np.hstack((feature_vector,step))
     return feature_vector
@@ -142,7 +144,7 @@ def get_distance_map(board, head):
 
 
 def all_logs_to_features(folder):
-    big_res_matix= np.zeros((0, 44))
+    big_res_matix= np.zeros((0, 45))
     i=0
     for file_name in os.listdir(folder):
         print(i)

@@ -45,7 +45,7 @@ def parse_episode(lines):
     head_line = lines[13]
     episode_instance.snake_head = parseHead(head_line[:-2])
     episode_instance.board = parseBoard(lines[3:13])# np.asarray(int(lines[3:13, :-1]))
-    episode_instance.next_dir = int(lines[14].split()[3])
+    episode_instance.next_dir = lines[14].split()[-1]
     return episode_instance
 
 
@@ -59,7 +59,7 @@ def parse(file_name):
         lines=content[i:i+15]
         episode_instance = parse_episode(lines)
         episodeArray.append(episode_instance)
-        i+=14
+        i+=15
     return episodeArray
 
 

@@ -12,7 +12,7 @@ sample_batch_train_data = np.load(r"D:\projects\RL\snake\hackathon\rafi\logs\fet
 #loading data
 np.random.shuffle(sample_batch_train_data)
 half_sz = int(sample_batch_train_data.shape[0]/2)
-input_dim = 43
+input_dim = 44
 X_train = sample_batch_train_data[1:half_sz, :input_dim]
 y_train = sample_batch_train_data[1:half_sz, input_dim]
 X_test  = sample_batch_train_data[half_sz:, :input_dim]
@@ -24,18 +24,17 @@ y_train = (y_train-mn)/(mx-mn)
 num_train_examples = X_train.shape[0]
 num_eval_examples = X_test.shape[0]
 
-init = initializers.RandomNormal(mean=0.0, stddev=0.05, seed=None)
-activ = 'relu'# LeakyReLU(alpha=0.1)
+init = initializers.RandomNormal(mean=0.0, stddev=0.1, seed=None)
+activ = LeakyReLU(alpha=0.1) # 'relu'#
 # create model
 model = Sequential()
 model.add(Dense(12, input_dim=input_dim, kernel_initializer=init, activation=activ))
-model.add(Dense(8,kernel_initializer=init, activation=activ))
-model.add(Dense(1,kernel_initializer=init, activation='sigmoid'))
+model.add(Dense(8, kernel_initializer=init, activation=activ))
+model.add(Dense(1, kernel_initializer=init, activation='sigmoid'))
 
 # Compile model
-adam = optimizers.Adam(lr=0.001)
+adam = optimizers.Adam(lr=0.001)#, decay=0.01)
 model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mae'])
-
 
 # Fit the model
 model.fit(X_train, y_train, epochs=100, batch_size=200 )
@@ -43,9 +42,10 @@ model.fit(X_train, y_train, epochs=100, batch_size=200 )
 scores = model.evaluate(X_test, y_test)
 print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 predictions = model.predict(X_test)
-plt.plot(y_test, '.')
+plt.plot(y_test, '.g')
 plt.hold(1)
-plt.plot(predictions, '.')
+plt.plot(predictions, '.b')
 plt.show()
 
+model.save(r'D:\projects\RL\snake\hackathon\rafi\models\first_model.h5')
 a=1
