@@ -7,7 +7,7 @@ import os
 def episodes_to_rewards_vec(episodeArray):
     rewards = [i.reward for i in episodeArray]
     prev_index=-1
-    lambda_ = 0.9
+    lambda_ = 0.2
     rewards_sum=np.zeros_like(rewards)
     for i in range (len(rewards)):
         if rewards[i]==-100 or i==len(episodeArray)-1:
@@ -15,8 +15,8 @@ def episodes_to_rewards_vec(episodeArray):
             for j in range (i-1,prev_index,-1):
                 next_reward_sum = rewards_sum[j+1]
                 cur_reward = rewards[j]
-                cur_reward_sum = (1-lambda_)*cur_reward + lambda_* next_reward_sum ## more smooth reward, do not erward twice for long games
-                # cur_reward_sum = cur_reward + lambda_* next_reward_sum ## original RL theory.
+                # cur_reward_sum = (1-lambda_)*cur_reward + lambda_* next_reward_sum ## more smooth reward, do not erward twice for long games
+                cur_reward_sum = cur_reward + lambda_* next_reward_sum ## original RL theory.
                 rewards_sum[j] = cur_reward_sum
             prev_index = i
     return rewards_sum
@@ -70,13 +70,13 @@ def get_data_for_the_next_steps(episode):
     if episode.next_dir == 'CW':
         next_direction_code = 1
     elif episode.next_dir == 'CC':
-        next_direction_code = -1
+        next_direction_code = 2
 
     return np.hstack((next_direction_code, sub_board))
 
 
 
-def episode_to_features_vec(episode):
+def episode_to_features_vec(episode, n_apples_types=3):
     sz = episode.board.shape
     head = episode.snake_head
     board = episode.board
@@ -85,13 +85,11 @@ def episode_to_features_vec(episode):
     feature_vector = get_data_for_the_next_steps(episode)
 
     dist_map = get_distance_map(board, real_head)
-
-    for i in range(1, 10): # we only support 10 types of apples
-
+    for i in range(1, n_apples_types): # we only support n_apples_types types of apples
         apple_num = -i
         apple_map = board == apple_num
         if not apple_map.any():
-            feature_vector = np.hstack((feature_vector,board.nbytes/8)) # should be very large number
+            feature_vector = np.hstack((feature_vector,board.shape[0] + 1)) # should be very large number
             feature_vector = np.hstack((feature_vector,0))
             continue
         apple_dists = apple_map * dist_map
@@ -116,7 +114,7 @@ def episode_to_features_vec(episode):
         if (diff_index[1]>0):
             step = 1
         elif (diff_index[1]<0):
-            step=-1
+            step = 2
         else:
             if (diff_index[0]>0):
                 step = 1
@@ -144,18 +142,24 @@ def get_distance_map(board, head):
 
 
 def all_logs_to_features(folder):
-    big_res_matix= np.zeros((0, 45))
     i=0
     for file_name in os.listdir(folder):
         print(i)
-        i=i+1
         file_path= os.path.join(folder,file_name)
+        if not file_name[:3] == 'log':
+            continue
+
         episodeArray = episode_parser.parse(file_path)
         fetures_table = np.asarray(episode_to_features_table(episodeArray))
         rewards_vec = np.asarray(episodes_to_rewards_vec(episodeArray)).transpose()
         rewards_vec = np.resize(rewards_vec, (rewards_vec.shape[0], 1))
         one_log_res = np.hstack((fetures_table,rewards_vec))
-        big_res_matix = np.vstack((big_res_matix,one_log_res))
+        if i==0:
+            big_res_matix = one_log_res
+        else:
+            big_res_matix = np.vstack((big_res_matix, one_log_res))
+        i = i + 1
+
     return big_res_matix
 
 

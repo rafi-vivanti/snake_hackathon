@@ -10,7 +10,7 @@ class Episode:
         self.board = []
         self.snake_head = []
         self.dir = 'W'
-        self.next_dir = 'W'
+        self.next_dir = 'CW'
 
 def parseBoard(lines):
     board = np.zeros((0,10), dtype=int)
