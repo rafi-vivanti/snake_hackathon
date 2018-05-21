@@ -333,7 +333,7 @@ class Game(object):
             initial_size = p.aq.qsize()
             p.handle_state(self.round, self.state, self.rewards[i+1])
             ## wait until all processes finished (team)
-            long_time_waiting = 1000
+            long_time_waiting = 10000
             for temp in range(long_time_waiting):
                 if not p.aq.qsize() == initial_size:
                     break

@@ -12,6 +12,20 @@ class Episode:
         self.dir = 'W'
         self.next_dir = 'CW'
 
+
+def parseEpisodeFromState(player_state,state,cycle, next_dir):
+    episode_instance = Episode()
+    episode_instance.reward = 0
+    episode_instance.r_sum = 0
+    episode_instance.cycle = cycle
+    episode_instance.board = state
+    episode_instance.snake_head = player_state['chain'][-1]
+    episode_instance.dir = player_state['dir']
+    episode_instance.next_dir = next_dir
+    return episode_instance
+
+
+
 def parseBoard(lines):
     board = np.zeros((0,10), dtype=int)
     for line in lines:

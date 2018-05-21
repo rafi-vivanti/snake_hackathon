@@ -37,10 +37,10 @@ model.add(Dense(1, kernel_initializer=init, activation='sigmoid'))
 # Compile model
 adam = optimizers.Adam(lr=0.001)#, decay=0.01)
 filepath = r'D:\projects\RL\snake\hackathon\rafi\models\first_model.h5'
-# callback = callbacks.ModelCheckpoint(filepath, monitor='val_loss', verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
-model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mae'])#, callback=callback)
+callbac = callbacks.ModelCheckpoint(filepath)
+model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mae'])
 # Fit the model
-model.fit(X_train, y_train, epochs=100, batch_size=200)
+model.fit(X_train, y_train, epochs=10000, batch_size=50, callbacks=[callbac])
 
 scores = model.evaluate(X_test, y_test)
 print("\n%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
@@ -52,5 +52,16 @@ plt.show()
 
 
 
-model.save(r'D:\projects\RL\snake\hackathon\rafi\models\first_model.h5')
+
+# serialize model to JSON
+model_json = model.to_json()
+with open(r'D:\projects\RL\snake\hackathon\rafi\models\first_model.json', "w") as json_file:
+    json_file.write(model_json)
+# serialize weights to HDF5
+model.save_weights(r'D:\projects\RL\snake\hackathon\rafi\models\first_model.h5')
+print("Saved model to disk")
+
+
+
+#model.save(r'D:\projects\RL\snake\hackathon\rafi\models\first_model.h5')
 a=1
