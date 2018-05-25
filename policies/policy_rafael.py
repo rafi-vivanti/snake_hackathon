@@ -5,6 +5,7 @@ from keras.models import model_from_json
 import  episode_parser
 import  features_generator
 import queue
+from keras import optimizers
 from keras.models import Sequential
 
 class PolicyRafael(bp.Policy):
@@ -24,81 +25,79 @@ class PolicyRafael(bp.Policy):
             # load weights into new model
             self.model.load_weights(r'D:\projects\RL\snake\hackathon\rafi\models\first_model.h5')
             print("Loaded model from disk")
-            self.model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
-            self.epsilon = 0.1
-            # self.step = 0
-            # self.prev_0_reward=0
-            # self.prev_1_reward=0
-            # self.prev_2_reward=0
-            # self.experience_table = []
+            adam = optimizers.Adam(lr=0.001)  # , decay=0.01)
+            self.model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mae'])
+
+            self.epsilon = 0.5
             self.MAX_EXPERIENCE = 500
-            self.BATCH_SIZE = 20
+            self.BATCH_SIZE = 10
             self.learning_q_rewards = queue.Queue(3) #3 is the max size
             self.learning_q_features = queue.Queue(3)  # 3 is the max size
             self.experience_table= []
+
+            #statistics:
+            self.loss = []
 
             #state = pickle.load(open(self.load_from))
         except IOError:
             state = np.zeros(100)
         #self.state = state
+
+
     def learn(self, reward, t):
         gamma = 0.2
         if (self.learning_q_rewards.full()):
             #calculate rewrad_sum for 3-previous state
-            cur_pow = self.learning_q_rewards.maxsize
             reward_sum = 0
             cur_pow = 0
             for i in self.learning_q_rewards.queue:
                 reward_sum += pow(gamma,cur_pow)*i
                 cur_pow += 1
+                if i == -100:
+                    gamma = 0 ## we are in the next game already, calculating reward for last episodes of previous game.
             reward_sum += pow(gamma, cur_pow) * reward
-            self.experience_table.append(np.hstack((self.learning_q_features.get(),reward_sum)))
+            cur_pow += 1
+            learning_features = np.reshape(self.learning_q_features.queue[0], (1, self.learning_q_features.queue[0].shape[0]))
+            reward_sum += pow(gamma, cur_pow) * self.model.predict(learning_features)[0][0]
+
+            self.experience_table.append(np.hstack((self.learning_q_features.get(), reward_sum)))
             if len(self.experience_table) > self.MAX_EXPERIENCE:
                 self.experience_table = self.experience_table[1:]
             self.learning_q_rewards.get()
         self.learning_q_rewards.put(reward)
-        self.train_net()
-    # def learn(self, reward, t):
-    #     gamma = 0.2
-    #     self.step += 1
-    #     if (self.q.qsize() < 4):
-    #         if (len(self.experience_table))>0:
-    #             self.experience_table=self.experience_table[:-1]
-    #     else:
-    #         if (self.q.qsize()>4):
-    #             self.q.get()
-    #         reward_sum = reward
-    #         reward_sum += gamma * self.prev_0_reward
-    #         reward_sum += gamma *gamma * self.prev_1_reward
-    #         reward_sum += gamma *gamma *gamma * self.prev_2_reward
-    #         features_to_predict = np.reshape(self.experience_table[-1][:-1], (1, self.experience_table[-1][:-1].shape[0]))
-    #         reward_sum += gamma *gamma *gamma *gamma *self.model.predict(features_to_predict)
-    #
-    #         if (reward == -100):
-    #             self.step = 0
-    #             self.prev_0_reward = 0
-    #             self.prev_1_reward = 0
-    #             self.prev_2_reward = 0
-    #         self.experience_table[-1][-1] = reward_sum
-    #     self.train_net();
+        self.train_net(t)
 
 
-    def train_net(self):
+    def train_net(self, iter_num):
         if len(self.experience_table)>self.BATCH_SIZE:
+            print("train net:")
             sample_ind = np.random.choice(len(self.experience_table),self.BATCH_SIZE)
             samples = [self.experience_table[i] for i in sample_ind ]
-            print ("train net:")
-            #print ("exp:\n "+self.experience_table)
-            #TODO actually train
+            X = np.asarray(samples)[:,:-1]
+            y = np.asarray(samples)[:, -1]
+            hist = self.model.fit(X, y)
+            loss = hist.history['loss'][0]
+            mae = hist.history['mean_absolute_error'][0]
+            self.loss.append([loss, mae])
 
-    # def get_batch(self):
-    #     batch = np.zeros((BATCH, CHANNELS, self.board_size_flat))
-    #     sample_ind = np.random.choice(range(self.MAX_EXPERIENCE), replace=False, size=BATCH)
-    #     samples = self.D[sample_ind]
-    #     for i, ii in enumerate(sample_ind):
-    #         batch[ii] = np.vstack([self.D[i - j] for j in range(CHANNELS)])
-    #     return batch
+            if np.mod(iter_num, 5000) == 0:
+                # serialize model to JSON
+                model_json = self.model.to_json()
+                import time
+                t = time.clock()
 
+
+                name = r'D:\projects\RL\snake\hackathon\rafi\models\saved_models\model_' + str(t)
+                with open(name + '.json', "w") as json_file:
+                    json_file.write(model_json)
+                self.model.save_weights(name + '.h5')
+                print("Saved model to disk")
+                f = open(r'D:\projects\RL\snake\hackathon\rafi\models\loss\losses.txt' , 'a')
+                for i in range(len(self.loss)):
+                    f.write(str(np.asarray(self.loss[i])))
+                    f.write('\n')
+                self.loss = []
+                f.close()
 
     def act(self, t, state, player_state):
         rand_num = np.random.rand()
@@ -106,7 +105,7 @@ class PolicyRafael(bp.Policy):
             print("random action: ")
             rand_action_index = np.random.randint(3)
             print("random action: " + bp.Policy.ACTIONS[rand_action_index])
-            self.epsilon*= 0.999
+            self.epsilon *= 0.9999
             selected_action =  bp.Policy.ACTIONS[rand_action_index]
         else:
             scores = np.zeros((3, 1))
@@ -123,8 +122,7 @@ class PolicyRafael(bp.Policy):
 
         selcted_episode = episode_parser.parseEpisodeFromState(player_state, state, t, selected_action)
         features = features_generator.episode_to_features_vec(selcted_episode)
-        features_for_exp = np.hstack((features.ravel(), 0))
-        self.learning_q_features.put(features_for_exp)
+        self.learning_q_features.put(features)
 
 
         return selected_action
