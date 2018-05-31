@@ -342,8 +342,8 @@ class Game(object):
                 print('slither got NO action. Policy probably crashed! ')
                 raise('slither got NO action. Policy probably crashed! ')
 
-            else:
-                print("slither got action and continued")
+            # else:
+            #     print("slither got action and continued")
 
         # wait and collect actions
         # time.sleep(self.policy_wait_time)

@@ -11,32 +11,33 @@ from keras.models import Sequential
 class PolicyRafael(bp.Policy):
 
     def cast_string_args(self, policy_args):
+        self.model_path = policy_args["model_path"]
         return policy_args
 
     def init_run(self):
         try:
-            model_path = r'D:\projects\RL\snake\hackathon\rafi\models\first_model.h5'
-
             # load json and create model
-            json_file = open(r'D:\projects\RL\snake\hackathon\rafi\models\first_model.json', 'r')
+            json_file = open(self.model_path + '.json', 'r')
             loaded_model_json = json_file.read()
             json_file.close()
             self.model = model_from_json(loaded_model_json)
             # load weights into new model
-            self.model.load_weights(r'D:\projects\RL\snake\hackathon\rafi\models\first_model.h5')
+            self.model.load_weights(self.model_path + '.h5')
+            # self.model.(self.model_path + '.h5')
             print("Loaded model from disk")
             adam = optimizers.Adam(lr=0.001)  # , decay=0.01)
             self.model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mae'])
 
             self.epsilon = 0.5
             self.MAX_EXPERIENCE = 500
-            self.BATCH_SIZE = 10
+            self.BATCH_SIZE = 100
             self.learning_q_rewards = queue.Queue(3) #3 is the max size
             self.learning_q_features = queue.Queue(3)  # 3 is the max size
             self.experience_table= []
 
             #statistics:
             self.loss = []
+            self.r_sum = 0
 
             #state = pickle.load(open(self.load_from))
         except IOError:
@@ -45,6 +46,9 @@ class PolicyRafael(bp.Policy):
 
 
     def learn(self, reward, t):
+        self.r_sum += reward
+        if reward == -100:
+            self.r_sum = 0
         gamma = 0.2
         if (self.learning_q_rewards.full()):
             #calculate rewrad_sum for 3-previous state
@@ -70,31 +74,32 @@ class PolicyRafael(bp.Policy):
 
     def train_net(self, iter_num):
         if len(self.experience_table)>self.BATCH_SIZE:
-            print("train net:")
+            # print("train net:")
             sample_ind = np.random.choice(len(self.experience_table),self.BATCH_SIZE)
             samples = [self.experience_table[i] for i in sample_ind ]
             X = np.asarray(samples)[:,:-1]
             y = np.asarray(samples)[:, -1]
-            hist = self.model.fit(X, y)
+            hist = self.model.fit(X, y, verbose=0)
             loss = hist.history['loss'][0]
             mae = hist.history['mean_absolute_error'][0]
-            self.loss.append([loss, mae])
+            self.loss.append([loss, mae, self.r_sum])
 
-            if np.mod(iter_num, 5000) == 0:
+            if np.mod(iter_num, 10000) == 0:
                 # serialize model to JSON
                 model_json = self.model.to_json()
                 import time
                 t = time.clock()
 
-
-                name = r'D:\projects\RL\snake\hackathon\rafi\models\saved_models\model_' + str(t)
+                name = r'D:\projects\RL\snake\hackathon\rafi\models\saved_models3\model_' + str(t)
                 with open(name + '.json', "w") as json_file:
                     json_file.write(model_json)
                 self.model.save_weights(name + '.h5')
                 print("Saved model to disk")
-                f = open(r'D:\projects\RL\snake\hackathon\rafi\models\loss\losses.txt' , 'a')
+                f = open(r'D:\projects\RL\snake\hackathon\rafi\models\loss\losses3.txt' , 'a')
                 for i in range(len(self.loss)):
-                    f.write(str(np.asarray(self.loss[i])))
+                    f.write(str(self.loss[i][0]) + " ")
+                    f.write(str(self.loss[i][1]) + " ")
+                    f.write(str(self.loss[i][2]))
                     f.write('\n')
                 self.loss = []
                 f.close()
@@ -102,11 +107,10 @@ class PolicyRafael(bp.Policy):
     def act(self, t, state, player_state):
         rand_num = np.random.rand()
         if (rand_num<self.epsilon):
-            print("random action: ")
             rand_action_index = np.random.randint(3)
-            print("random action: " + bp.Policy.ACTIONS[rand_action_index])
+            # print("random action: " + bp.Policy.ACTIONS[rand_action_index])
             self.epsilon *= 0.9999
-            selected_action =  bp.Policy.ACTIONS[rand_action_index]
+            selected_action = bp.Policy.ACTIONS[rand_action_index]
         else:
             scores = np.zeros((3, 1))
             i=0
@@ -118,7 +122,7 @@ class PolicyRafael(bp.Policy):
                 i += 1
             max_score = np.argmax(scores)
             selected_action = bp.Policy.ACTIONS[max_score]
-            print("selected action: "+selected_action)
+            # print("selected action: "+selected_action)
 
         selcted_episode = episode_parser.parseEpisodeFromState(player_state, state, t, selected_action)
         features = features_generator.episode_to_features_vec(selcted_episode)

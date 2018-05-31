@@ -3,7 +3,7 @@ import numpy as np
 import episode_parser
 import scipy.ndimage as ndim
 import os
-
+from policies.base_policy import Policy
 def episodes_to_rewards_vec(episodeArray):
     rewards = [i.reward for i in episodeArray]
     prev_index=-1
@@ -66,11 +66,7 @@ def get_data_for_the_next_steps(episode):
     values = ndim.binary_dilation(values, structure=struct_).astype(values.dtype)
     values = ndim.binary_dilation(values, structure=struct_).astype(values.dtype)
     sub_board = sub_board[values > 0]
-    next_direction_code = 0
-    if episode.next_dir == 'CW':
-        next_direction_code = 1
-    elif episode.next_dir == 'CC':
-        next_direction_code = 2
+    next_direction_code = Policy.ACTIONS.index(episode.next_dir)
 
     return np.hstack((next_direction_code, sub_board))
 
@@ -112,14 +108,14 @@ def episode_to_features_vec(episode, n_apples_types=3):
         # decide what is the direction to the closest apple. the board is already rotated to the north (snake view)
         # decide on direction solely on direction in x axis
         if (diff_index[1]>0):
-            step = 1
+            step = Policy.ACTIONS.index('CW')
         elif (diff_index[1]<0):
-            step = 2
+            step = Policy.ACTIONS.index('CC')
         else:
             if (diff_index[0]>0):
-                step = 1
+                step = Policy.ACTIONS.index('CW')
             else:
-                step = 0
+                step = Policy.ACTIONS.index('CN')
 
         feature_vector =np.hstack((feature_vector,np.linalg.norm(diff_index)))
         feature_vector = np.hstack((feature_vector,step))
@@ -131,7 +127,7 @@ def episode_to_features_vec(episode, n_apples_types=3):
 def get_distance_map(board, head):
     big = np.zeros((board.shape[0]*3, board.shape[1]*3))
     big[board.shape[0]+head[0], board.shape[1]+head[1]] = 1
-    big_dist_map = ndim.morphology.distance_transform_edt(1-big)
+    big_dist_map = ndim.morphology.distance_transform_bf(1-big, metric='cityblock')
     res = np.zeros_like(board)
     w = board.shape[0]
     h = board.shape[1]

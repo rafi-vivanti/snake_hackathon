@@ -91,7 +91,7 @@ class Policy(mp.Process):
                     t, state, player_state, reward = input
                     self.learn(reward, t)
                     self.aq.put((t, self.act(t, state, player_state)))
-                    print("policy act")
+                    # print("policy act")
         except Exception as e:
             tb_str = '%'.join([l.replace('\n','**') for l in traceback.format_tb(e.__traceback__)])
             self.log("policy %s is down: %s" % (str(self), tb_str), type='error')
