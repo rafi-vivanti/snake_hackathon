@@ -6,7 +6,10 @@ import  episode_parser
 import  features_generator
 import queue
 from keras import optimizers
+from keras import backend as K
 from keras.models import Sequential
+from keras import initializers
+
 
 class PolicyRafael(bp.Policy):
 
@@ -21,9 +24,9 @@ class PolicyRafael(bp.Policy):
             loaded_model_json = json_file.read()
             json_file.close()
             self.model = model_from_json(loaded_model_json)
-            # load weights into new model
-            self.model.load_weights(self.model_path + '.h5')
-            # self.model.(self.model_path + '.h5')
+
+            # self.model.load_weights(self.model_path + '.h5')
+            self.reset_weights()
             print("Loaded model from disk")
             adam = optimizers.Adam(lr=0.001)  # , decay=0.01)
             self.model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mae'])
@@ -109,7 +112,7 @@ class PolicyRafael(bp.Policy):
         if (rand_num<self.epsilon):
             rand_action_index = np.random.randint(3)
             # print("random action: " + bp.Policy.ACTIONS[rand_action_index])
-            self.epsilon *= 0.9999
+            self.epsilon *= 0.99999
             selected_action = bp.Policy.ACTIONS[rand_action_index]
         else:
             scores = np.zeros((3, 1))
@@ -128,10 +131,22 @@ class PolicyRafael(bp.Policy):
         features = features_generator.episode_to_features_vec(selcted_episode)
         self.learning_q_features.put(features)
 
-
+        print("epsilon: " + str(self.epsilon) + "/n")
         return selected_action
 
     def get_state(self):
         return None
 
+    def reset_weights(self):
+        session = K.get_session()
+        for layer in self.model.layers:
+            if hasattr(layer, 'kernel_initializer'):
+                layer.kernel.initializer.run(session=session)
 
+    def reset_model(self):
+        for layer in self.model.layers:
+            if hasattr(layer, 'init'):
+                init = getattr(layer, 'init')
+                new_weights = init(layer.get_weights()[0].shape).get_value()
+                bias = shared_zeros(layer.get_weights()[1].shape).get_value()
+                layer.set_weights([new_weights, bias])
