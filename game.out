@@ -1,2 +1,2 @@
 game_id,player_id,policy,score,state_file_path
-1810487928368,1,PolicyRafael,0,D:\projects\RL\snake\hackathon\hackathon\states\1810487928368.1.PolicyRafael.state.pkl
+1958042052760,1,PolicyRafael,32216.684078821636,D:\projects\RL\snake\hackathon\hackathon\states\1958042052760.1.PolicyRafael.state.pkl

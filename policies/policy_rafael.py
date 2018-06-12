@@ -15,19 +15,28 @@ class PolicyRafael(bp.Policy):
 
     def cast_string_args(self, policy_args):
         self.model_path = policy_args["model_path"]
+        self.name = policy_args["name"]
         return policy_args
 
     def init_run(self):
         try:
             # load json and create model
-            json_file = open(self.model_path + '.json', 'r')
-            loaded_model_json = json_file.read()
-            json_file.close()
-            self.model = model_from_json(loaded_model_json)
+            if not self.model_path == '':
+                json_file = open(self.model_path + '.json', 'r')
+                loaded_model_json = json_file.read()
+                json_file.close()
+                self.model = model_from_json(loaded_model_json)
 
-            # self.model.load_weights(self.model_path + '.h5')
-            self.reset_weights()
-            print("Loaded model from disk")
+                self.model.load_weights(self.model_path + '.h5')
+                print("Loaded model from disk: " + self.model_path + '.h5')
+            else:
+                print(self.name+" loading")
+                json_file = open(r"D:\projects\RL\snake\hackathon\rafi\models\first_model.json", 'r')
+                loaded_model_json = json_file.read()
+                json_file.close()
+                self.model = model_from_json(loaded_model_json)
+                self.reset_weights()
+                print(self.name+" - Using random initialized model")
             adam = optimizers.Adam(lr=0.001)  # , decay=0.01)
             self.model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mae'])
 
@@ -97,12 +106,12 @@ class PolicyRafael(bp.Policy):
                 with open(name + '.json', "w") as json_file:
                     json_file.write(model_json)
                 self.model.save_weights(name + '.h5')
-                print("Saved model to disk")
-                f = open(r'D:\projects\RL\snake\hackathon\rafi\models\loss\losses3.txt' , 'a')
+                # print("Saved model to disk")
+                f = open(r'D:\projects\RL\snake\hackathon\rafi\models\loss\policy_' + self.name + '.txt' , 'a')
                 for i in range(len(self.loss)):
-                    f.write(str(self.loss[i][0]) + " ")
-                    f.write(str(self.loss[i][1]) + " ")
-                    f.write(str(self.loss[i][2]))
+                    # f.write(str(self.loss[i][0]) + " ")
+                    # f.write(str(self.loss[i][1]) + " ")
+                    f.write(str(self.loss[i][2])) ## only current reward
                     f.write('\n')
                 self.loss = []
                 f.close()
@@ -131,7 +140,7 @@ class PolicyRafael(bp.Policy):
         features = features_generator.episode_to_features_vec(selcted_episode)
         self.learning_q_features.put(features)
 
-        print("epsilon: " + str(self.epsilon) + "/n")
+        # print("epsilon: " + str(self.epsilon) + "/n")
         return selected_action
 
     def get_state(self):

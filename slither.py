@@ -243,6 +243,8 @@ class Game(object):
 
         # configure symbols for rendering
         self.render_map = {p.id: chr(ord('a') - 1 + p.id) for p in self.players[1:]}
+        if len(self.render_map):
+            self.render_map = {1: 't', 2: 'r'}
         self.render_map.update(SYMBOLS)
         self.render_map.update(self.food_render_map)
 
@@ -317,6 +319,7 @@ class Game(object):
             self.state[mv] = p.id
             #update scores
             self.scores[p.id] = self.scores[p.id]*self.score_scope + self.rewards[p.id]
+            self.rewards[1], self.rewards[2] = self.rewards[1] - self.rewards[2], self.rewards[2] - self.rewards[1]  ## RAFI
         return to_reset
 
     def randomize(self):
